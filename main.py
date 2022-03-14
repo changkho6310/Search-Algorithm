@@ -4,6 +4,13 @@ SQUARE = 21
 FONT_SIZE = 13
 FONT = ('Consoles', FONT_SIZE)
 
+GRID_COLOR = "white"
+INPUT_CLUSTERS_COLOR = "red"
+FENCE_COLOR = "grey"
+EXPANDED_COLOR = "green"
+FRONTIER_COLOR = "yellow"
+PATH_COLOR = "blue"
+
 
 class Node:
     def __init__(self, x, y, parent=None, h=0):
@@ -11,6 +18,9 @@ class Node:
         self.y = y
         self.parent = parent
         self.h = h
+        self.g = 0
+        if self.parent is not None:
+            self.g = self.parent.g + 1
 
     def is_goal(self, goal):
         return self.x == goal.x and self.y == goal.y
@@ -185,11 +195,38 @@ def read_file():
     return max_x, max_y, start_node, goal_node, lst_input_clusters
 
 
+def draw_start_and_goal(start, goal):
+    # Draw START
+    turtle.setpos(start.x * SQUARE, start.y * SQUARE)
+    turtle.pencolor("black")
+    turtle.fillcolor(PATH_COLOR)
+    turtle.stamp()
+
+    turtle.setpos(start.x * SQUARE, start.y * SQUARE - 10)
+    turtle.pencolor("white")
+    turtle.write("S", align="center", font=FONT)
+
+    #   Draw GOAL
+    turtle.setpos(goal.x * SQUARE, goal.y * SQUARE)
+    turtle.pencolor("black")
+    turtle.fillcolor(PATH_COLOR)
+    turtle.stamp()
+
+    turtle.setpos(goal.x * SQUARE, goal.y * SQUARE - 10)
+    turtle.pencolor("white")
+    turtle.write("G", align="center", font=FONT)
+
+    # Clear color of shape and move it to another pos to hint it from GRID TABLE
+    turtle.fillcolor("white")
+    turtle.setpos(-300, -300)
+    pass
+
+
 # done
 def draw_grid(max_x, max_y, start_node, goal_node, lst_input_clusters):
     turtle.shape("square")
     turtle.shapesize(1, 1, 1)
-    turtle.fillcolor("white")
+    turtle.fillcolor(GRID_COLOR)
     turtle.penup()
 
     # Draw Ox
@@ -225,50 +262,160 @@ def draw_grid(max_x, max_y, start_node, goal_node, lst_input_clusters):
     # Draw list fence
     for node_fence in lst_fence:
         turtle.setpos(node_fence.x * SQUARE, node_fence.y * SQUARE)
-        turtle.fillcolor("grey")
+        turtle.fillcolor(FENCE_COLOR)
         turtle.stamp()
 
     # Draw Input Fence Node (RED)
     for node in list_nodes_of_clusters:
         turtle.setpos(node.x * SQUARE, node.y * SQUARE)
-        turtle.fillcolor("orange")
+        turtle.fillcolor(INPUT_CLUSTERS_COLOR)
         turtle.stamp()
 
-    #   Draw START
-    turtle.setpos(start_node.x * SQUARE, start_node.y * SQUARE)
-    turtle.fillcolor("blue")
-    turtle.stamp()
+    #   Draw START and GOAL
+    draw_start_and_goal(start=start_node, goal=goal_node)
+    return lst_fence
 
-    turtle.setpos(start_node.x * SQUARE, start_node.y * SQUARE - 10)
-    turtle.pencolor("white")
-    turtle.write("S", align="center", font=FONT)
 
-    #   Draw GOAL
-    turtle.setpos(goal_node.x * SQUARE, goal_node.y * SQUARE)
+def change_color(node, color):
+    turtle.setpos(node.x * SQUARE, node.y * SQUARE)
     turtle.pencolor("black")
-    turtle.fillcolor("blue")
+    turtle.fillcolor(color)
     turtle.stamp()
 
-    turtle.setpos(goal_node.x * SQUARE, goal_node.y * SQUARE - 10)
-    turtle.pencolor("white")
-    turtle.write("G", align="center", font=FONT)
 
-    # Clear color of shape and move it to another pos to hint it from GRID TABLE
-    turtle.fillcolor("white")
-    turtle.setpos(-300, -300)
+def get_solution(goal):
+    path = []
+    path_cost = goal.g
+
+    tmp_node = goal
+    while tmp_node.parent is not None:
+        path.append(tmp_node)
+        tmp_node = tmp_node.parent
+
+    # START
+    path.append(tmp_node)
+    return path, path_cost
 
 
-max_x, max_y, start_node, goal_node, lst_input_clusters = read_file()
+def get_neighbor(node):
+    lst_neighbor = []
+    # TOP
+    lst_neighbor.append(Node(node.x, node.y + 1, parent=node))
+    # RIGHT
+    lst_neighbor.append(Node(node.x + 1, node.y, parent=node))
+    # BOTTOM
+    lst_neighbor.append(Node(node.x, node.y - 1, parent=node))
+    # LEFT
+    lst_neighbor.append(Node(node.x - 1, node.y, parent=node))
+    return lst_neighbor
 
-screen = turtle.Screen()
-turtle.setup()
-turtle.screensize(2000, 2000, "white")
-turtle.speed(0)
 
-draw_grid(max_x=max_x,
-          max_y=max_y,
-          start_node=start_node,
-          goal_node=goal_node,
-          lst_input_clusters=lst_input_clusters)
+def add_node_to_expanded(node, expanded):
+    expanded.append(node)
+    change_color(node, EXPANDED_COLOR)
+    return expanded
 
-screen.mainloop()
+
+def add_node_to_frontier(node, frontier=[]):
+    frontier.append(node)
+    change_color(node, FRONTIER_COLOR)
+    return frontier
+
+
+def can_add_node_to_frontier(node, frontier, expanded, lst_fence):
+    for expanded_node in expanded:
+        if node.x == expanded_node.x and node.y == expanded_node.y:
+            return False
+
+    for frontier_node in frontier:
+        if node.x == frontier_node.x and node.y == frontier_node.y:
+            return False
+
+    for fence_node in lst_fence:
+        if node.x == fence_node.x and node.y == fence_node.y:
+            return False
+
+    return True
+
+
+def draw_path(path):
+    for node in path:
+        change_color(node, PATH_COLOR)
+
+
+def clear_expanded_frontier_color(expanded=[], frontier=[]):
+    for node in expanded:
+        change_color(node, GRID_COLOR)
+    for node in frontier:
+        change_color(node, GRID_COLOR)
+
+
+def breadth_first_search(start, goal, lst_fence):
+    found_goal = False
+    frontier = []
+    expanded = []
+
+    if start.is_goal(goal=goal):
+        expanded = add_node_to_expanded(goal, expanded)
+        found_goal = True
+
+    frontier = add_node_to_frontier(start, frontier)
+
+    while frontier and found_goal is False:
+        # FIFO
+        node_to_expand = frontier.pop(0)
+        lst_neighbor = get_neighbor(node_to_expand)
+        expanded = add_node_to_expanded(node_to_expand, expanded)
+        for item in lst_neighbor:
+            # Check if node is goal
+            # Enqueue : Check before adding to frontier
+            if item.is_goal(goal=goal):
+                expanded = add_node_to_expanded(item, expanded)
+                goal.parent = item.parent
+                found_goal = True
+                break
+
+            # Check a node can be added to frontier:
+            # 1. Not in explored set
+            # 2. Not in frontier
+            # 3. Not in fence
+            if can_add_node_to_frontier(node=item,
+                                        frontier=frontier,
+                                        expanded=expanded,
+                                        lst_fence=lst_fence):
+                frontier = add_node_to_frontier(item, frontier)
+
+    clear_expanded_frontier_color(expanded=expanded,
+                                  frontier=frontier)
+    # If failure
+    if found_goal is False:
+        draw_start_and_goal(start=start, goal=goal)
+        return [], 0
+    # If success
+    else:
+        path, path_cost = get_solution(goal)
+        draw_path(path)
+        draw_start_and_goal(start=start, goal=goal)
+        return path, path_cost
+
+
+def main():
+    max_x, max_y, start_node, goal_node, lst_input_clusters = read_file()
+    screen = turtle.Screen()
+    turtle.setup()
+    turtle.screensize(2000, 2000, "white")
+    turtle.speed(0)
+
+    lst_fence = draw_grid(max_x=max_x,
+                          max_y=max_y,
+                          start_node=start_node,
+                          goal_node=goal_node,
+                          lst_input_clusters=lst_input_clusters)
+
+    path, path_cost = breadth_first_search(start=start_node,
+                                           goal=goal_node,
+                                           lst_fence=lst_fence)
+    screen.mainloop()
+
+
+main()
