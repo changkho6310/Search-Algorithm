@@ -679,6 +679,93 @@ def a_star_graph_search(start, goal, lst_fence):
         return path, path_cost
 
 
+def can_add_node_to_path(node, path=[], lst_fence=[]):
+    for item in path:
+        if node.x == item.x and node.y == item.y:
+            return False
+    for fence_node in lst_fence:
+        if node.x == fence_node.x and node.y == fence_node.y:
+            return False
+    return True
+
+
+def add_node_to_path(node, path):
+    path.append(node)
+    change_color(node, EXPANDED_COLOR)
+    return path
+
+
+def pop_node_from_path(path):
+    node = path.pop()
+    change_color(node, GRID_COLOR)
+    return path
+
+
+def get_start(path):
+    return path.pop(0)
+
+
+def clear_info(x, y):
+    for i in range(10):
+        turtle.setpos(x + SQUARE * i - 20, y + 10)
+        turtle.pencolor("white")
+        turtle.fillcolor("white")
+        turtle.stamp()
+
+
+def write_info(x, y, info):
+    clear_info(x=x, y=y)
+    turtle.setpos(x, y)
+    turtle.pencolor("black")
+    turtle.write(info, align="center", font=FONT)
+
+
+def depth_limited_search(s, g, path, l, lst_fence):
+    can_add = can_add_node_to_path(node=s,
+                                   path=path,
+                                   lst_fence=lst_fence)
+    if can_add is False:
+        return False, path
+    # add s to path
+    path = add_node_to_path(node=s, path=path)
+
+    # check goal
+    if s.x == g.x and s.y == g.y:
+        return True, path
+    if int(l) == 0:
+        path = pop_node_from_path(path=path)
+        return False, path
+
+    list_children = get_neighbor(node=s)
+    while list_children:
+        s = list_children.pop(0)
+        success, path = depth_limited_search(s=s,
+                                             g=g,
+                                             path=path,
+                                             l=l - 1,
+                                             lst_fence=lst_fence)
+        if success is True:
+            return success, path
+    # can't go forward
+    path = pop_node_from_path(path=path)
+    return False, path
+
+
+def iterative_deepening_search(start, goal, lst_fence):
+    for l in range(100):
+        info = "L = " + str(l)
+        write_info(x=0,
+                   y=-100,
+                   info=info)
+        success, path = depth_limited_search(s=start,
+                                             g=goal,
+                                             path=[],
+                                             l=l,
+                                             lst_fence=lst_fence)
+        if success is True:
+            return success, path
+
+
 def main():
     max_x, max_y, start_node, goal_node, lst_input_clusters = read_file()
     screen = turtle.Screen()
@@ -692,9 +779,13 @@ def main():
                           goal_node=goal_node,
                           lst_input_clusters=lst_input_clusters)
 
-    path, path_cost = a_star_graph_search(start=start_node,
-                                          goal=goal_node,
-                                          lst_fence=lst_fence)
+    success, path = iterative_deepening_search(start=start_node,
+                                               goal=goal_node,
+                                               lst_fence=lst_fence)
+    draw_path(path=path)
+    start = get_start(path=path)
+    draw_start_and_goal(start=start, goal=goal_node)
+
     screen.mainloop()
 
 
