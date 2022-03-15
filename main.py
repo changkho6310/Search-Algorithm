@@ -322,7 +322,7 @@ def add_node_to_frontier(node, frontier=[]):
     return frontier
 
 
-def can_add_node_to_frontier(node, frontier, expanded, lst_fence):
+def can_add_node_to_frontier(node, frontier=[], expanded=[], lst_fence=[]):
     for expanded_node in expanded:
         if node.x == expanded_node.x and node.y == expanded_node.y:
             return False
@@ -358,35 +358,124 @@ def breadth_first_search(start, goal, lst_fence):
     if start.is_goal(goal=goal):
         expanded = add_node_to_expanded(goal, expanded)
         found_goal = True
+    else:
+        frontier = add_node_to_frontier(start, frontier)
+        while frontier and found_goal is False:
+            # FIFO
+            node_to_expand = frontier.pop(0)
+            lst_neighbor = get_neighbor(node_to_expand)
+            expanded = add_node_to_expanded(node_to_expand, expanded)
+            for item in lst_neighbor:
+                # Check if node is goal
+                # Enqueue : Check before adding to frontier
+                if item.is_goal(goal=goal):
+                    expanded = add_node_to_expanded(item, expanded)
+                    goal.parent = item.parent
+                    found_goal = True
+                    break
+
+                # Check a node can be added to frontier:
+                # 1. Not in explored set
+                # 2. Not in frontier
+                # 3. Not in fence
+                if can_add_node_to_frontier(node=item,
+                                            frontier=frontier,
+                                            expanded=expanded,
+                                            lst_fence=lst_fence):
+                    frontier = add_node_to_frontier(item, frontier)
+
+        clear_expanded_frontier_color(expanded=expanded,
+                                      frontier=frontier)
+
+    # If failure
+    if found_goal is False:
+        draw_start_and_goal(start=start, goal=goal)
+        return [], 0
+    # If success
+    else:
+        path, path_cost = get_solution(goal)
+        draw_path(path)
+        draw_start_and_goal(start=start, goal=goal)
+        return path, path_cost
+
+
+def get_min_node_ucs(lst):
+    if lst:
+        min_node = lst[0].g
+
+    index_min_node = 0
+    for i, item in enumerate(lst):
+        if min_node > item.g:
+            min_node = item.g
+            index_min_node = i
+
+    min_node = lst.pop(index_min_node)
+    return min_node, lst
+
+
+def get_node_from_frontier_ucs(frontier):
+    node, frontier = get_min_node_ucs(lst=frontier)
+    return node, frontier
+
+
+def update_node_in_frontier_ucs(node, frontier=[]):
+    for item in frontier:
+        if item.x == node.x and item.y == node.y and item.g > node.g:
+            item.parent = node.parent
+            draw_path_cost_of_node(node)
+            break
+    return frontier
+
+
+def draw_path_cost_of_node(node):
+    turtle.pencolor("black")
+    turtle.setpos(node.x * SQUARE, node.y * SQUARE - 10)
+    turtle.write(str(node.g), align="center", font=FONT)
+
+
+# Dequeue : Check goal after getting node out of frontier
+# Tree Search
+def uniform_cost_search(start, goal, lst_fence):
+    found_goal = False
+    frontier = []
+    expanded = []
 
     frontier = add_node_to_frontier(start, frontier)
-
     while frontier and found_goal is False:
-        # FIFO
-        node_to_expand = frontier.pop(0)
+        node_to_expand, frontier = get_node_from_frontier_ucs(frontier=frontier)
+
+        # Dequeue : Check if node is goal after getting node out of frontier
+        if node_to_expand.is_goal(goal):
+            goal.parent = node_to_expand.parent
+            expanded = add_node_to_expanded(node_to_expand, expanded)
+            found_goal = True
+            break
+
         lst_neighbor = get_neighbor(node_to_expand)
         expanded = add_node_to_expanded(node_to_expand, expanded)
+        draw_path_cost_of_node(node=node_to_expand)
         for item in lst_neighbor:
-            # Check if node is goal
-            # Enqueue : Check before adding to frontier
-            if item.is_goal(goal=goal):
-                expanded = add_node_to_expanded(item, expanded)
-                goal.parent = item.parent
-                found_goal = True
-                break
-
             # Check a node can be added to frontier:
-            # 1. Not in explored set
-            # 2. Not in frontier
-            # 3. Not in fence
+            # 1. Node is not in explored set or frontier
+            # 2. Node is not in fence
             if can_add_node_to_frontier(node=item,
                                         frontier=frontier,
                                         expanded=expanded,
                                         lst_fence=lst_fence):
-                frontier = add_node_to_frontier(item, frontier)
+                frontier = add_node_to_frontier(node=item, frontier=frontier)
+                draw_path_cost_of_node(node=item)
+            # Check a node can be updated in frontier:
+            # 1. Node is not in explored set
+            # 2. Node is not in fence
+            # 3. Node is in frontier with lower path cost (g)
+            elif can_add_node_to_frontier(node=item,
+                                          lst_fence=lst_fence,
+                                          expanded=expanded):
+                frontier = update_node_in_frontier_ucs(item, frontier)
 
     clear_expanded_frontier_color(expanded=expanded,
                                   frontier=frontier)
+
     # If failure
     if found_goal is False:
         draw_start_and_goal(start=start, goal=goal)
@@ -413,8 +502,8 @@ def main():
                           lst_input_clusters=lst_input_clusters)
 
     path, path_cost = breadth_first_search(start=start_node,
-                                           goal=goal_node,
-                                           lst_fence=lst_fence)
+                                          goal=goal_node,
+                                          lst_fence=lst_fence)
     screen.mainloop()
 
 
