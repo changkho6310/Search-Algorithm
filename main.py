@@ -13,17 +13,24 @@ PATH_COLOR = "blue"
 
 
 class Node:
-    def __init__(self, x, y, parent=None, h=0):
+    def __init__(self, x, y, parent=None, goal=None):
         self.x = x
         self.y = y
         self.parent = parent
-        self.h = h
+        self.h = 0
         self.g = 0
+        self.g_and_h = 0
         if self.parent is not None:
             self.g = self.parent.g + 1
+        if goal is not None:
+            self.h = calc_h_manhattan(node=self, goal=goal)
+            self.g_and_h = self.h + self.g
 
     def is_goal(self, goal):
         return self.x == goal.x and self.y == goal.y
+
+    def calc_h_manhattan(self, goal):
+        return abs(goal.x - self.x) + abs(goal.y - self.y)
 
 
 # done
@@ -297,16 +304,26 @@ def get_solution(goal):
     return path, path_cost
 
 
-def get_neighbor(node):
+def get_neighbor(node, goal=None):
     lst_neighbor = []
-    # TOP
-    lst_neighbor.append(Node(node.x, node.y + 1, parent=node))
-    # RIGHT
-    lst_neighbor.append(Node(node.x + 1, node.y, parent=node))
-    # BOTTOM
-    lst_neighbor.append(Node(node.x, node.y - 1, parent=node))
-    # LEFT
-    lst_neighbor.append(Node(node.x - 1, node.y, parent=node))
+    if goal is not None:
+        # TOP
+        lst_neighbor.append(Node(node.x, node.y + 1, parent=node, goal=goal))
+        # RIGHT
+        lst_neighbor.append(Node(node.x + 1, node.y, parent=node, goal=goal))
+        # BOTTOM
+        lst_neighbor.append(Node(node.x, node.y - 1, parent=node, goal=goal))
+        # LEFT
+        lst_neighbor.append(Node(node.x - 1, node.y, parent=node, goal=goal))
+    else:
+        # TOP
+        lst_neighbor.append(Node(node.x, node.y + 1, parent=node))
+        # RIGHT
+        lst_neighbor.append(Node(node.x + 1, node.y, parent=node))
+        # BOTTOM
+        lst_neighbor.append(Node(node.x, node.y - 1, parent=node))
+        # LEFT
+        lst_neighbor.append(Node(node.x - 1, node.y, parent=node))
     return lst_neighbor
 
 
@@ -401,12 +418,12 @@ def breadth_first_search(start, goal, lst_fence):
 
 def get_min_node_ucs(lst):
     if lst:
-        min_node = lst[0].g
+        min_g = lst[0].g
 
     index_min_node = 0
     for i, item in enumerate(lst):
-        if min_node > item.g:
-            min_node = item.g
+        if min_g > item.g:
+            min_g = item.g
             index_min_node = i
 
     min_node = lst.pop(index_min_node)
@@ -427,10 +444,25 @@ def update_node_in_frontier_ucs(node, frontier=[]):
     return frontier
 
 
+def update_node_in_frontier_gbfs(node, frontier=[]):
+    for item in frontier:
+        if item.x == node.x and item.y == node.y and item.h > node.h:
+            item.parent = node.parent
+            draw_h_of_node(node)
+            break
+    return frontier
+
+
 def draw_path_cost_of_node(node):
     turtle.pencolor("black")
     turtle.setpos(node.x * SQUARE, node.y * SQUARE - 10)
     turtle.write(str(node.g), align="center", font=FONT)
+
+
+def draw_h_of_node(node):
+    turtle.pencolor("black")
+    turtle.setpos(node.x * SQUARE, node.y * SQUARE - 10)
+    turtle.write(str(node.h), align="center", font=FONT)
 
 
 # Dequeue : Check goal after getting node out of frontier
@@ -488,6 +520,85 @@ def uniform_cost_search(start, goal, lst_fence):
         return path, path_cost
 
 
+def get_min_node_by_h(lst):
+    if lst:
+        min_h = lst[0].h
+
+    index_min_node = 0
+    for i, item in enumerate(lst):
+        if min_h > item.h:
+            min_h = item.h
+            index_min_node = i
+
+    min_node = lst.pop(index_min_node)
+    return min_node, lst
+
+
+def get_node_from_frontier_gbfs(frontier):
+    node, frontier = get_min_node_by_h(lst=frontier)
+    return node, frontier
+
+
+def calc_h_manhattan(node, goal):
+    return abs(goal.x - node.x) + abs(goal.y - node.y)
+
+
+def greedy_best_first_search(start, goal, lst_fence):
+    found_goal = False
+    frontier = []
+    expanded = []
+
+    start = Node(x=start.x, y=start.y, goal=goal)
+    frontier = add_node_to_frontier(start, frontier)
+    draw_h_of_node(node=start)
+    while frontier and found_goal is False:
+        node_to_expand, frontier = get_node_from_frontier_gbfs(frontier=frontier)
+
+        # Dequeue : Check if node is goal after getting node out of frontier
+        if node_to_expand.is_goal(goal):
+            goal.parent = node_to_expand.parent
+            expanded = add_node_to_expanded(node_to_expand, expanded)
+            found_goal = True
+            break
+
+        lst_neighbor = get_neighbor(node=node_to_expand,
+                                    goal=goal)
+        expanded = add_node_to_expanded(node_to_expand, expanded)
+        draw_h_of_node(node=node_to_expand)
+        for item in lst_neighbor:
+            # Check a node can be added to frontier:
+            # 1. Node is not in explored set or frontier
+            # 2. Node is not in fence
+            if can_add_node_to_frontier(node=item,
+                                        frontier=frontier,
+                                        expanded=expanded,
+                                        lst_fence=lst_fence):
+                frontier = add_node_to_frontier(node=item, frontier=frontier)
+                draw_h_of_node(node=item)
+            # Check a node can be updated in frontier:
+            # 1. Node is not in explored set
+            # 2. Node is not in fence
+            # 3. Node is in frontier with lower h
+            elif can_add_node_to_frontier(node=item,
+                                          lst_fence=lst_fence,
+                                          expanded=expanded):
+                frontier = update_node_in_frontier_gbfs(item, frontier)
+
+    clear_expanded_frontier_color(expanded=expanded,
+                                  frontier=frontier)
+
+    # If failure
+    if found_goal is False:
+        draw_start_and_goal(start=start, goal=goal)
+        return [], 0
+    # If success
+    else:
+        path, path_cost = get_solution(goal)
+        draw_path(path)
+        draw_start_and_goal(start=start, goal=goal)
+        return path, path_cost
+
+
 def main():
     max_x, max_y, start_node, goal_node, lst_input_clusters = read_file()
     screen = turtle.Screen()
@@ -501,9 +612,9 @@ def main():
                           goal_node=goal_node,
                           lst_input_clusters=lst_input_clusters)
 
-    path, path_cost = breadth_first_search(start=start_node,
-                                          goal=goal_node,
-                                          lst_fence=lst_fence)
+    path, path_cost = greedy_best_first_search(start=start_node,
+                                               goal=goal_node,
+                                               lst_fence=lst_fence)
     screen.mainloop()
 
 
