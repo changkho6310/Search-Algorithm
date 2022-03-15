@@ -3,7 +3,6 @@ import turtle
 SQUARE = 21
 FONT_SIZE = 13
 FONT = ('Consoles', FONT_SIZE)
-
 GRID_COLOR = "white"
 INPUT_CLUSTERS_COLOR = "red"
 FENCE_COLOR = "grey"
@@ -33,7 +32,6 @@ class Node:
         return abs(goal.x - self.x) + abs(goal.y - self.y)
 
 
-# done
 def draw_fence_two_node(n1, n2):
     lst_fence = []
     if n1.x < n2.x:
@@ -111,7 +109,17 @@ def draw_fence_two_node(n1, n2):
     return lst_fence
 
 
-# done
+def draw_4_fence_borders(lst_fence, max_x, max_y):
+    for i in range(0, max_y + 1):
+        lst_fence.append(Node(0, i))
+        lst_fence.append(Node(max_x, i))
+
+    for i in range(0, max_x + 1):
+        lst_fence.append(Node(i, 0))
+        lst_fence.append(Node(i, max_y))
+    return lst_fence
+
+
 def draw_fence(lst_fence, one_cluster):
     if len(one_cluster) == 0:
         return lst_fence
@@ -134,19 +142,6 @@ def draw_fence(lst_fence, one_cluster):
     return lst_fence
 
 
-# done
-def draw_4_fence_borders(lst_fence, max_x, max_y):
-    for i in range(0, max_y + 1):
-        lst_fence.append(Node(0, i))
-        lst_fence.append(Node(max_x, i))
-
-    for i in range(0, max_x + 1):
-        lst_fence.append(Node(i, 0))
-        lst_fence.append(Node(i, max_y))
-    return lst_fence
-
-
-# done
 def remove_duplicate_fence(lst_fence):
     lst_temp = []
     if lst_fence:
@@ -163,7 +158,6 @@ def remove_duplicate_fence(lst_fence):
     return lst_temp
 
 
-# done
 def get_list_nodes_of_clusters(lst_clusters):
     list_nodes_of_clusters = []
     for cluster in lst_clusters:
@@ -172,7 +166,6 @@ def get_list_nodes_of_clusters(lst_clusters):
     return list_nodes_of_clusters
 
 
-# done
 def read_file():
     with open("input.txt") as file:
         lines = file.readlines()
@@ -229,7 +222,6 @@ def draw_start_and_goal(start, goal):
     pass
 
 
-# done
 def draw_grid(max_x, max_y, start_node, goal_node, lst_input_clusters):
     turtle.shape("square")
     turtle.shapesize(1, 1, 1)
@@ -367,6 +359,109 @@ def clear_expanded_frontier_color(expanded=[], frontier=[]):
         change_color(node, GRID_COLOR)
 
 
+def get_min_node_by_g(lst):
+    if lst:
+        min_g = lst[0].g
+
+    index_min_node = 0
+    for i, item in enumerate(lst):
+        if min_g > item.g:
+            min_g = item.g
+            index_min_node = i
+
+    min_node = lst.pop(index_min_node)
+    return min_node, lst
+
+
+def get_min_node_by_h(lst):
+    if lst:
+        min_h = lst[0].h
+
+    index_min_node = 0
+    for i, item in enumerate(lst):
+        if min_h > item.h:
+            min_h = item.h
+            index_min_node = i
+
+    min_node = lst.pop(index_min_node)
+    return min_node, lst
+
+
+def get_min_node_by_g_and_h(lst):
+    if lst:
+        min_g_and_h = lst[0].g_and_h
+
+    index_min_node = 0
+    for i, item in enumerate(lst):
+        if min_g_and_h > item.g_and_h:
+            min_g_and_h = item.g_and_h
+            index_min_node = i
+
+    min_node = lst.pop(index_min_node)
+    return min_node, lst
+
+
+def get_node_from_frontier_ucs(frontier):
+    node, frontier = get_min_node_by_g(lst=frontier)
+    return node, frontier
+
+
+def get_node_from_frontier_gbfs(frontier):
+    node, frontier = get_min_node_by_h(lst=frontier)
+    return node, frontier
+
+
+def get_node_from_frontier_a_star(frontier):
+    node, frontier = get_min_node_by_g_and_h(lst=frontier)
+    return node, frontier
+
+
+def update_node_in_frontier_ucs(node, frontier=[]):
+    for item in frontier:
+        if item.x == node.x and item.y == node.y and item.g > node.g:
+            item = node
+            draw_g_of_node(node)
+            break
+    return frontier
+
+
+def update_node_in_frontier_gbfs(node, frontier=[]):
+    for item in frontier:
+        if item.x == node.x and item.y == node.y and item.h > node.h:
+            item = node
+            draw_h_of_node(node)
+            break
+    return frontier
+
+
+def update_node_in_frontier_a_star(node, frontier=[]):
+    for item in frontier:
+        if item.x == node.x and item.y == node.y and item.g_and_h > node.g_and_h:
+            item = node
+            draw_g_and_h_of_node(item)
+            break
+    return frontier
+
+
+def draw_g_of_node(node):
+    turtle.pencolor("black")
+    turtle.setpos(node.x * SQUARE, node.y * SQUARE - 10)
+    turtle.write(str(node.g), align="center", font=FONT)
+
+
+def draw_h_of_node(node):
+    turtle.pencolor("black")
+    turtle.setpos(node.x * SQUARE, node.y * SQUARE - 10)
+    turtle.write(str(node.h), align="center", font=FONT)
+
+
+def draw_g_and_h_of_node(node):
+    turtle.pencolor("black")
+    turtle.setpos(node.x * SQUARE, node.y * SQUARE - 10)
+    turtle.write(str(node.g_and_h), align="center", font=FONT)
+
+
+# Enqueue : Check before adding to frontier
 def breadth_first_search(start, goal, lst_fence):
     found_goal = False
     frontier = []
@@ -414,70 +509,6 @@ def breadth_first_search(start, goal, lst_fence):
         draw_path(path)
         draw_start_and_goal(start=start, goal=goal)
         return path, path_cost
-
-
-def get_min_node_by_g(lst):
-    if lst:
-        min_g = lst[0].g
-
-    index_min_node = 0
-    for i, item in enumerate(lst):
-        if min_g > item.g:
-            min_g = item.g
-            index_min_node = i
-
-    min_node = lst.pop(index_min_node)
-    return min_node, lst
-
-
-def get_node_from_frontier_ucs(frontier):
-    node, frontier = get_min_node_by_g(lst=frontier)
-    return node, frontier
-
-
-def update_node_in_frontier_ucs(node, frontier=[]):
-    for item in frontier:
-        if item.x == node.x and item.y == node.y and item.g > node.g:
-            item = node
-            draw_g_of_node(node)
-            break
-    return frontier
-
-
-def update_node_in_frontier_gbfs(node, frontier=[]):
-    for item in frontier:
-        if item.x == node.x and item.y == node.y and item.h > node.h:
-            item = node
-            draw_h_of_node(node)
-            break
-    return frontier
-
-
-def update_node_in_frontier_a_star(node, frontier=[]):
-    for item in frontier:
-        if item.x == node.x and item.y == node.y and item.g_and_h > node.g_and_h:
-            item = node
-            draw_g_and_h_of_node(item)
-            break
-    return frontier
-
-
-def draw_g_of_node(node):
-    turtle.pencolor("black")
-    turtle.setpos(node.x * SQUARE, node.y * SQUARE - 10)
-    turtle.write(str(node.g), align="center", font=FONT)
-
-
-def draw_h_of_node(node):
-    turtle.pencolor("black")
-    turtle.setpos(node.x * SQUARE, node.y * SQUARE - 10)
-    turtle.write(str(node.h), align="center", font=FONT)
-
-
-def draw_g_and_h_of_node(node):
-    turtle.pencolor("black")
-    turtle.setpos(node.x * SQUARE, node.y * SQUARE - 10)
-    turtle.write(str(node.g_and_h), align="center", font=FONT)
 
 
 # Dequeue : Check goal after getting node out of frontier
@@ -534,44 +565,7 @@ def uniform_cost_search(start, goal, lst_fence):
         return path, path_cost
 
 
-def get_min_node_by_h(lst):
-    if lst:
-        min_h = lst[0].h
-
-    index_min_node = 0
-    for i, item in enumerate(lst):
-        if min_h > item.h:
-            min_h = item.h
-            index_min_node = i
-
-    min_node = lst.pop(index_min_node)
-    return min_node, lst
-
-
-def get_min_node_by_g_and_h(lst):
-    if lst:
-        min_g_and_h = lst[0].g_and_h
-
-    index_min_node = 0
-    for i, item in enumerate(lst):
-        if min_g_and_h > item.g_and_h:
-            min_g_and_h = item.g_and_h
-            index_min_node = i
-
-    min_node = lst.pop(index_min_node)
-    return min_node, lst
-
-
-def get_node_from_frontier_gbfs(frontier):
-    node, frontier = get_min_node_by_h(lst=frontier)
-    return node, frontier
-
-
-def get_node_from_frontier_a_star(frontier):
-    node, frontier = get_min_node_by_g_and_h(lst=frontier)
-    return node, frontier
-
-
+# Dequeue : Check goal after getting node out of frontier
 def greedy_best_first_search(start, goal, lst_fence):
     found_goal = False
     frontier = []
@@ -628,6 +622,7 @@ def greedy_best_first_search(start, goal, lst_fence):
         return path, path_cost
 
 
+# Dequeue : Check goal after getting node out of frontier
 def a_star_graph_search(start, goal, lst_fence):
     found_goal = False
     frontier = []
