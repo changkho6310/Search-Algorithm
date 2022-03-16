@@ -1,5 +1,7 @@
 import turtle
 
+import easygui as easygui
+
 SQUARE = 21
 FONT_SIZE = 13
 FONT = ('Consoles', FONT_SIZE)
@@ -30,6 +32,13 @@ class Node:
 
     def calc_h_manhattan(self, goal):
         return abs(goal.x - self.x) + abs(goal.y - self.y)
+
+
+def clear_pen():
+    # Clear color of shape and move it to another pos to hint it from GRID TABLE
+    turtle.fillcolor(GRID_COLOR)
+    turtle.pencolor(GRID_COLOR)
+    turtle.setpos(-1000, -1000)
 
 
 def draw_fence_two_node(n1, n2):
@@ -215,11 +224,6 @@ def draw_start_and_goal(start, goal):
     turtle.setpos(goal.x * SQUARE, goal.y * SQUARE - 10)
     turtle.pencolor("white")
     turtle.write("G", align="center", font=FONT)
-
-    # Clear color of shape and move it to another pos to hint it from GRID TABLE
-    turtle.fillcolor("white")
-    turtle.setpos(-300, -300)
-    pass
 
 
 def draw_grid(max_x, max_y, start_node, goal_node, lst_input_clusters):
@@ -523,7 +527,7 @@ def uniform_cost_search(start, goal, lst_fence):
 
         # Dequeue : Check if node is goal after getting node out of frontier
         if node_to_expand.is_goal(goal):
-            goal.parent = node_to_expand.parent
+            goal = node_to_expand
             expanded = add_node_to_expanded(node_to_expand, expanded)
             found_goal = True
             break
@@ -579,7 +583,7 @@ def greedy_best_first_search(start, goal, lst_fence):
 
         # Dequeue : Check if node is goal after getting node out of frontier
         if node_to_expand.is_goal(goal):
-            goal.parent = node_to_expand.parent
+            goal = node_to_expand
             expanded = add_node_to_expanded(node_to_expand, expanded)
             found_goal = True
             break
@@ -636,7 +640,7 @@ def a_star_graph_search(start, goal, lst_fence):
 
         # Dequeue : Check if node is goal after getting node out of frontier
         if node_to_expand.is_goal(goal):
-            goal.parent = node_to_expand.parent
+            goal = node_to_expand
             expanded = add_node_to_expanded(node_to_expand, expanded)
             found_goal = True
             break
@@ -752,11 +756,10 @@ def depth_limited_search(s, g, path, l, lst_fence):
 
 
 def iterative_deepening_search(start, goal, lst_fence):
-    for l in range(100):
+    l = 0
+    while True:
         info = "L = " + str(l)
-        write_info(x=0,
-                   y=-100,
-                   info=info)
+        write_info(x=-335, y=230, info=info)
         success, path = depth_limited_search(s=start,
                                              g=goal,
                                              path=[],
@@ -764,29 +767,101 @@ def iterative_deepening_search(start, goal, lst_fence):
                                              lst_fence=lst_fence)
         if success is True:
             return success, path
+        l += 1
 
 
-def main():
-    max_x, max_y, start_node, goal_node, lst_input_clusters = read_file()
-    screen = turtle.Screen()
+def read_file_and_draw(file="input.txt"):
+    turtle.Screen()
     turtle.setup()
     turtle.screensize(2000, 2000, "white")
     turtle.speed(0)
 
+    max_x, max_y, start_node, goal_node, lst_input_clusters = read_file()
     lst_fence = draw_grid(max_x=max_x,
                           max_y=max_y,
                           start_node=start_node,
                           goal_node=goal_node,
                           lst_input_clusters=lst_input_clusters)
+    my_info = "Name:\tNguyễn Thành Đạt\n" \
+              "MSSV:\t18127077\n" \
+              "Lab 1:\tSearch"
+    write_info(-250, 300, my_info)
+    return start_node, goal_node, lst_fence
 
-    success, path = iterative_deepening_search(start=start_node,
+
+def get_choice():
+    show_options = "1. Breadth-First Search\n" \
+                   "2. Uniform-Cost Search\n" \
+                   "3. Iterative Deepening Search\n" \
+                   "4. Greedy-Best First Search\n" \
+                   "5. Graph-Search A*\n\n" \
+                   "Please enter your choice."
+    choice = easygui.enterbox(show_options, "18127077")
+    return choice
+
+
+def menu():
+    choice = get_choice()
+
+    # Breadth-First Search
+    if choice == "1":
+        start_node, goal_node, lst_fence = read_file_and_draw("input.txt")
+        path, path_cost = breadth_first_search(start=start_node,
                                                goal=goal_node,
                                                lst_fence=lst_fence)
-    draw_path(path=path)
-    start = get_start(path=path)
-    draw_start_and_goal(start=start, goal=goal_node)
+        clear_pen()
+        turtle.Screen().mainloop()
+        return
+    # Uniform-Cost Search
+    if choice == "2":
+        start_node, goal_node, lst_fence = read_file_and_draw("input.txt")
+        path, path_cost = uniform_cost_search(start=start_node,
+                                              goal=goal_node,
+                                              lst_fence=lst_fence)
+        write_info(-300, 200, "Path Cost = " + str(path_cost))
+        clear_pen()
+        turtle.Screen().mainloop()
+        return
+    # Iterative Deepening Search
+    if choice == "3":
+        start_node, goal_node, lst_fence = read_file_and_draw("input.txt")
+        success, path = iterative_deepening_search(start=start_node,
+                                                   goal=goal_node,
+                                                   lst_fence=lst_fence)
+        if success is True:
+            draw_path(path=path)
+        start = get_start(path=path)
+        draw_start_and_goal(start=start, goal=goal_node)
+        write_info(-300, 200, "Path Cost = " + str(len(path)))
+        clear_pen()
+        turtle.Screen().mainloop()
+        return
+    # Greedy-Best First Search
+    if choice == "4":
+        start_node, goal_node, lst_fence = read_file_and_draw("input.txt")
+        path, path_cost = greedy_best_first_search(start=start_node,
+                                                   goal=goal_node,
+                                                   lst_fence=lst_fence)
+        write_info(-300, 200, "Path Cost = " + str(path_cost))
+        clear_pen()
+        turtle.Screen().mainloop()
+        return
 
-    screen.mainloop()
+    # Graph-Search A*
+    if choice == "5":
+        start_node, goal_node, lst_fence = read_file_and_draw("input.txt")
+        path, path_cost = a_star_graph_search(start=start_node,
+                                              goal=goal_node,
+                                              lst_fence=lst_fence)
+        write_info(-300, 200, "Path Cost = " + str(path_cost))
+        clear_pen()
+        turtle.Screen().mainloop()
+        return
+    return
+
+
+def main():
+    menu()
 
 
 main()
