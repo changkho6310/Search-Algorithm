@@ -1,3 +1,4 @@
+import os
 import turtle
 
 import easygui as easygui
@@ -175,8 +176,8 @@ def get_list_nodes_of_clusters(lst_clusters):
     return list_nodes_of_clusters
 
 
-def read_file():
-    with open("input.txt") as file:
+def read_file(file):
+    with open(file) as file:
         lines = file.readlines()
 
     new_lines = []
@@ -718,6 +719,7 @@ def clear_info(x, y):
 
 
 def write_info(x, y, info):
+    turtle.penup()
     clear_info(x=x, y=y)
     turtle.setpos(x, y)
     turtle.pencolor("black")
@@ -770,22 +772,28 @@ def iterative_deepening_search(start, goal, lst_fence):
         l += 1
 
 
-def read_file_and_draw(file="input.txt"):
+def read_file_and_draw(file, title="Lab 1 - Search"):
+    if os.path.exists(file) is False:
+        print("Warning : file path: " + file + " not found.")
+        exit()
+
     turtle.Screen()
-    turtle.setup()
     turtle.screensize(2000, 2000, "white")
+    turtle.setup()
+    turtle.title(title)
     turtle.speed(0)
 
-    max_x, max_y, start_node, goal_node, lst_input_clusters = read_file()
+    my_info = "Name:\tNguyễn Thành Đạt\n" \
+              "MSSV:\t18127077\n" \
+              "Lab 1:\tSearch"
+    write_info(-250, 300, my_info)
+
+    max_x, max_y, start_node, goal_node, lst_input_clusters = read_file(file)
     lst_fence = draw_grid(max_x=max_x,
                           max_y=max_y,
                           start_node=start_node,
                           goal_node=goal_node,
                           lst_input_clusters=lst_input_clusters)
-    my_info = "Name:\tNguyễn Thành Đạt\n" \
-              "MSSV:\t18127077\n" \
-              "Lab 1:\tSearch"
-    write_info(-250, 300, my_info)
     return start_node, goal_node, lst_fence
 
 
@@ -805,7 +813,8 @@ def menu():
 
     # Breadth-First Search
     if choice == "1":
-        start_node, goal_node, lst_fence = read_file_and_draw("input.txt")
+        start_node, goal_node, lst_fence = read_file_and_draw(file="input.txt",
+                                                              title="Breadth First Search")
         path, path_cost = breadth_first_search(start=start_node,
                                                goal=goal_node,
                                                lst_fence=lst_fence)
@@ -814,7 +823,8 @@ def menu():
         return
     # Uniform-Cost Search
     if choice == "2":
-        start_node, goal_node, lst_fence = read_file_and_draw("input.txt")
+        start_node, goal_node, lst_fence = read_file_and_draw(file="input.txt",
+                                                              title="Uniform-Cost Search")
         path, path_cost = uniform_cost_search(start=start_node,
                                               goal=goal_node,
                                               lst_fence=lst_fence)
@@ -824,7 +834,10 @@ def menu():
         return
     # Iterative Deepening Search
     if choice == "3":
-        start_node, goal_node, lst_fence = read_file_and_draw("input.txt")
+        write_info(-300, 100, "Vì là IDS nên em lấy file input khác để goal gần start nha thầy\n"
+                              "Xa quá tìm lâu lắm thầy ui :D")
+        start_node, goal_node, lst_fence = read_file_and_draw(file="input_for_IDS.txt",
+                                                              title="Iterative Deepening Search")
         success, path = iterative_deepening_search(start=start_node,
                                                    goal=goal_node,
                                                    lst_fence=lst_fence)
@@ -838,7 +851,8 @@ def menu():
         return
     # Greedy-Best First Search
     if choice == "4":
-        start_node, goal_node, lst_fence = read_file_and_draw("input.txt")
+        start_node, goal_node, lst_fence = read_file_and_draw(file="input.txt",
+                                                              title="Greedy Best First Search")
         path, path_cost = greedy_best_first_search(start=start_node,
                                                    goal=goal_node,
                                                    lst_fence=lst_fence)
@@ -849,7 +863,8 @@ def menu():
 
     # Graph-Search A*
     if choice == "5":
-        start_node, goal_node, lst_fence = read_file_and_draw("input.txt")
+        start_node, goal_node, lst_fence = read_file_and_draw(file="input.txt",
+                                                              title="Graph Search A*")
         path, path_cost = a_star_graph_search(start=start_node,
                                               goal=goal_node,
                                               lst_fence=lst_fence)
